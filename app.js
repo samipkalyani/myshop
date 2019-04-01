@@ -8,11 +8,12 @@ const session =require('express-session');
 const MongoDBStore = require('connect-mongodb-session')(session);
 const csrf = require('csurf');
 const flash = require('connect-flash');
+const multer = require('multer');
 
 const errorController = require('./controllers/error');
 const User =require('./models/user');
 
-const MONGODB_URI='mongodb://127.0.0.1:27017/shopf';
+const MONGODB_URI='mongodb://127.0.0.1:27017/shopg';
 
 
 const app = express();
@@ -24,6 +25,15 @@ const store = new MongoDBStore(
 
 const csrfProtection =csrf();
 
+const fileStorage = multer.diskStorage({
+  destination: (req,file,cb)=>{
+    cb(null,'images');
+  },
+  filename: (req,file,cb)=>{
+    cb(null,new Date().toISOString +"-"+file.originalname);
+  }
+});
+
 app.set('view engine', 'ejs');
 app.set('views', 'views');
 
@@ -33,6 +43,7 @@ const shopRoutes = require('./routes/shop');
 const authRoutes = require('./routes/auth');
 
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use(multer({storage:fileStorage}).single('image'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use( 
   session (
@@ -51,10 +62,15 @@ app.use((req, res, next) => {
   }
   User.findById(req.session.user._id)
     .then(user => {
+      if (!user){
+        return next();
+      }
       req.user = user;
       next();
     })
-    .catch(err => console.log(err));
+    .catch(err =>{
+      throw new Error(err);
+    });
  
 });
 
@@ -77,7 +93,7 @@ app.use(errorController.get404);
 mongoose
   .connect(MONGODB_URI)
   .then(result => {
-    app.listen(3000);
+    app.listen(3002);
     console.log('Connected!');
   })
   .catch(err => {
