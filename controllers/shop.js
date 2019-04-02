@@ -1,3 +1,7 @@
+//GLOBAL MODULES
+const path =require('path');
+const fs =require('fs');
+//CUSTOM MODULES AND MODELS
 const Product = require('../models/product');
 const Order = require('../models/order');
 
@@ -115,4 +119,17 @@ exports.getOrders = (req, res, next) => {
     });
   })
   .catch(err => console.log(err));
+};
+exports.getInvoice = (req, res, next) => {
+  const orderId =req.params.orderId;
+  const invoiceName = 'invoice-'+orderId+'.pdf';
+  const invoicePath = path.join('data','invoices',invoiceName);
+  fs.readFile(invoicePath,(err,data)=>{
+    if(err){
+      //Redirected for time being should be routed to default err handling code
+      //return next(Err);
+      return res.redirect('/');
+    }
+    res.send(data);
+  });
 };
