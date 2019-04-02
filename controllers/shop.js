@@ -120,16 +120,54 @@ exports.getOrders = (req, res, next) => {
   })
   .catch(err => console.log(err));
 };
+
 exports.getInvoice = (req, res, next) => {
-  const orderId =req.params.orderId;
-  const invoiceName = 'invoice-'+orderId+'.pdf';
-  const invoicePath = path.join('data','invoices',invoiceName);
-  fs.readFile(invoicePath,(err,data)=>{
-    if(err){
-      //Redirected for time being should be routed to default err handling code
-      //return next(Err);
-      return res.redirect('/');
-    }
-    res.send(data);
-  });
+  const orderId = req.params.orderId;
+  Order.findById(orderId)
+    .then(order => {
+      if (!order) {
+        console.log("No order found")
+        return res.redirect('/');
+        
+      }
+      if (order.user.userId.toString() !== req.user._id.toString()) {
+        console.log("Unauthorized")
+        return res.redirect('/');
+      }
+      const invoiceName = 'invoice-' + orderId + '.pdf';
+      const invoicePath = path.join('data', 'invoices', invoiceName);
+
+      //The code below creates a pdf by preloading data i.e the node server makes
+      //all the data of pdf available in its memory
+      //this is not suitable for applications on the fly... :(
+
+      // fs.readFile(invoicePath, (err, data) => {
+      //   if (err) {
+      //     return next(err);
+      //   }
+      //   res.setHeader('Content-Type', 'application/pdf');
+      //   res.setHeader(
+      //     'Content-Disposition',
+      //     'inline; filename="' + invoiceName + '"'
+      //   );
+      //   res.send(data);
+      // });
+
+      //Instead of the above code we use ReadStream which loads the pdf data into chunks
+      //of memory ... The pipe() method loads the ReadStream data into a WriteStream
+      // ** res i.e response object is a WriteStream Object Hence the data from the
+      // can be given to it
+      // ReadStream(file) -----> WriteStream(res)
+
+      //This is useful for applications on the fly... :)
+
+      const file =fs.createReadStream(invoicePath);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader(
+          'Content-Disposition',
+          'inline; filename="' + invoiceName + '"'
+        );
+        file.pipe(res);
+    })
+    .catch(err => next(err));
 };
